@@ -145,6 +145,11 @@ int main(int argc, char **argv)
     // Initialize a job queue with a maximum size of 100
     JOBQ = queue_init(100);
 
+    // Create a new thread that will execute the `complete_jobs` function
+    if (pthread_create(&thread_id, NULL, complete_jobs, NULL) != 0) {
+        perror("pthread_create");
+        exit(EXIT_FAILURE);
+    }
 
     int job_count = 0;
     char input_line[1000];
@@ -171,8 +176,15 @@ int main(int argc, char **argv)
             if (strcmp(keyword, "submit") == 0) {
                 if (job_count >= 100) {
                     printf("No of jobs are exceeding.\n");
-                } else (JOBQ->count >= JOBQ->size) {
+                } else if (JOBQ->count >= JOBQ->size) {
                     printf("Job queue full, wait to complete some jobs.\n");
+                } else {
+                    // Extract the rest of the input as the job command and create a new job
+                    char* command = left_strip(strstr(input_line, "submit") + 6);
+                    JOBS[job_count] = create_job(command, job_count);
+                    queue_insert(JOBQ, JOBS + job_count);
+                    printf("Job %d added to the queue\n", job_count + 1);
+                    job_count++;
                 }
             }
             // Handle the 'showjobs' and 'submithistory' commands to list jobs
